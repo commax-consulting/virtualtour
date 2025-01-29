@@ -40,10 +40,11 @@ function handleOrientation(event) {
     const maxPitch = Math.PI / 3; // Obergrenze (~60°)
     const minPitch = -Math.PI / 3; // Untergrenze (~-60°)
 
+    // Sanfte Begrenzung von Pitch
     if (pitch > maxPitch) {
-        pitch = maxPitch;
+        pitch = THREE.MathUtils.lerp(pitch, maxPitch, 0.1); // Langsam zur Obergrenze
     } else if (pitch < minPitch) {
-        pitch = minPitch;
+        pitch = THREE.MathUtils.lerp(pitch, minPitch, 0.1); // Langsam zur Untergrenze
     }
 
     // Debugging: Überprüfe die berechneten Werte
