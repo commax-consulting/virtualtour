@@ -1,45 +1,58 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.module.js';
 
 let scene, camera, renderer;
+let initialAlpha = 0, initialBeta = 0, initialGamma = 0;
 let isCalibrated = false;
-let initialQuaternion = new THREE.Quaternion();
-let currentQuaternion = new THREE.Quaternion();
-let smoothQuaternion = new THREE.Quaternion();
 
+let quaternion = new THREE.Quaternion(); // Quaternion für Rotation
+let smoothQuaternion = new THREE.Quaternion(); // Geglättete Rotation
+
+// Funktion zur Quaternion-Glättung
 function applyQuaternionSmoothing(current, target, smoothingFactor = 0.1) {
-    return current.slerp(target, smoothingFactor);
+    return current.slerp(target, smoothingFactor); // Smoother Übergang
+}
+
+// Debugging-Funktion
+function debugOrientation(yaw, pitch, roll) {
+    console.log(`Yaw: ${yaw.toFixed(2)} rad`);
+    console.log(`Pitch: ${pitch.toFixed(2)} rad`);
+    console.log(`Roll: ${roll.toFixed(2)} rad`);
 }
 
 function handleOrientation(event) {
     if (!isCalibrated) {
-        // Initiale Quaternion basierend auf Sensorwerten setzen
-        const initialEuler = new THREE.Euler(
-            THREE.MathUtils.degToRad(event.beta || 0),
-            THREE.MathUtils.degToRad(event.alpha || 0),
-            THREE.MathUtils.degToRad(event.gamma || 0),
-            'YXZ'
-        );
-        initialQuaternion.setFromEuler(initialEuler);
+        // Kalibrierung der Startwerte
+        initialAlpha = event.alpha || 0;
+        initialBeta = event.beta || 0;
+        initialGamma = event.gamma || 0;
         isCalibrated = true;
-        console.log('Initial calibration complete.');
+        console.log(`Calibration complete: Alpha=${initialAlpha}, Beta=${initialBeta}, Gamma=${initialGamma}`);
     }
 
-    // Aktuelle Quaternion aus den Sensorwerten berechnen
-    const currentEuler = new THREE.Euler(
-        THREE.MathUtils.degToRad(event.beta || 0),
-        THREE.MathUtils.degToRad(event.alpha || 0),
-        THREE.MathUtils.degToRad(event.gamma || 0),
-        'YXZ'
-    );
-    currentQuaternion.setFromEuler(currentEuler);
+    let yaw, pitch, roll;
 
-    // Stabilisierung: Quaternion relativ zur Initialen berechnen
-    const relativeQuaternion = initialQuaternion.clone().invert().multiply(currentQuaternion);
+    // Querformat-Berechnung
+    yaw = THREE.MathUtils.degToRad((event.alpha || 0) - initialAlpha);
+    pitch = THREE.MathUtils.degToRad((event.gamma || 0) - initialGamma) * -1; // Invertiere Pitch
+    roll = THREE.MathUtils.degToRad((event.beta || 0) - initialBeta);
 
-    // Bewegung glätten
-    smoothQuaternion = applyQuaternionSmoothing(smoothQuaternion, relativeQuaternion);
+    // Begrenze Pitch (Hoch-/Runterschauen)
+    const maxPitch = Math.PI / 2 - 0.1; // Obergrenze (fast 90°)
+    const minPitch = -Math.PI / 2 + 0.1; // Untergrenze (fast -90°)
 
-    // Kamera orientieren
+    // Harte Begrenzung: Pitch exakt in Grenzen halten
+    if (pitch > maxPitch) {
+        pitch = maxPitch;
+    } else if (pitch < minPitch) {
+        pitch = minPitch;
+    }
+
+    // Debugging: Überprüfe die berechneten Werte
+    debugOrientation(yaw, pitch, roll);
+
+    // Quaternion für Kamera setzen
+    quaternion.setFromEuler(new THREE.Euler(pitch, yaw, -roll, 'YXZ'));
+    smoothQuaternion = applyQuaternionSmoothing(smoothQuaternion, quaternion);
     camera.quaternion.copy(smoothQuaternion);
 }
 
@@ -80,12 +93,13 @@ window.addEventListener('resize', () => {
 });
 
 document.getElementById('startButton').addEventListener('click', () => {
+    // Nur Querformat unterstützen
     if (window.innerWidth <= window.innerHeight) {
         alert('Bitte legen Sie Ihr Gerät ins Querformat, um fortzufahren.');
         return;
     }
 
-    console.log('Querformat erkannt.');
+    console.log(`Querformat erkannt`);
 
     if (typeof DeviceMotionEvent.requestPermission === 'function') {
         DeviceMotionEvent.requestPermission()
