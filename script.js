@@ -12,24 +12,16 @@ function applyQuaternionSmoothing(current, target, smoothingFactor = 0.1) {
 
 function handleOrientation(event) {
     if (!isCalibrated) {
-        // Begrenzung der Startwerte für eine symmetrische Kalibrierung
-        const clampedBeta = Math.max(-45, Math.min(45, event.beta || 0)); // Begrenze Hoch-/Runterschauen
-        const clampedGamma = Math.max(-45, Math.min(45, event.gamma || 0)); // Begrenze Seitenneigung
-
-        // Initiale Quaternion basierend auf begrenzten Sensorwerten setzen
+        // Initiale Quaternion basierend auf Sensorwerten setzen
         const initialEuler = new THREE.Euler(
-            THREE.MathUtils.degToRad(clampedBeta),
+            THREE.MathUtils.degToRad(event.beta || 0),
             THREE.MathUtils.degToRad(event.alpha || 0),
-            THREE.MathUtils.degToRad(clampedGamma),
+            THREE.MathUtils.degToRad(event.gamma || 0),
             'YXZ'
         );
         initialQuaternion.setFromEuler(initialEuler);
         isCalibrated = true;
-        console.log('Initial calibration complete.', {
-            alpha: event.alpha,
-            beta: clampedBeta,
-            gamma: clampedGamma,
-        });
+        console.log('Initial calibration complete.');
     }
 
     // Aktuelle Quaternion aus den Sensorwerten berechnen
