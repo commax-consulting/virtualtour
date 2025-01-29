@@ -6,21 +6,15 @@ let initialQuaternion = new THREE.Quaternion();
 let currentQuaternion = new THREE.Quaternion();
 let smoothQuaternion = new THREE.Quaternion();
 
-// Funktion zur Quaternion-Glättung
 function applyQuaternionSmoothing(current, target, smoothingFactor = 0.1) {
     return current.slerp(target, smoothingFactor);
 }
 
-// Hilfsfunktion zur Begrenzung von Werten
-function clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
-}
-
 function handleOrientation(event) {
     if (!isCalibrated) {
-        // Begrenzte Startkalibrierung
-        const clampedBeta = clamp(event.beta || 0, -45, 45); // Begrenze Pitch (hoch/runter)
-        const clampedGamma = clamp(event.gamma || 0, -45, 45); // Begrenze Roll (seitliches Kippen)
+        // Begrenzung der Startwerte für eine symmetrische Kalibrierung
+        const clampedBeta = Math.max(-45, Math.min(45, event.beta || 0)); // Begrenze Hoch-/Runterschauen
+        const clampedGamma = Math.max(-45, Math.min(45, event.gamma || 0)); // Begrenze Seitenneigung
 
         // Initiale Quaternion basierend auf begrenzten Sensorwerten setzen
         const initialEuler = new THREE.Euler(
@@ -31,7 +25,11 @@ function handleOrientation(event) {
         );
         initialQuaternion.setFromEuler(initialEuler);
         isCalibrated = true;
-        console.log('Initial calibration complete.');
+        console.log('Initial calibration complete.', {
+            alpha: event.alpha,
+            beta: clampedBeta,
+            gamma: clampedGamma,
+        });
     }
 
     // Aktuelle Quaternion aus den Sensorwerten berechnen
